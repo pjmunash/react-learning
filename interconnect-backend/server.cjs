@@ -15,7 +15,23 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:5177', 'http://localhost:5176'], 
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Extract port from origin
+    const match = origin.match(/http:\/\/localhost:(\d+)/);
+    if (match) {
+      const port = parseInt(match[1]);
+      // Allow ports 5173-5180
+      if (port >= 5173 && port <= 5180) {
+        return callback(null, true);
+      }
+    }
+    
+    // Fallback for other origins
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -41,10 +57,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!', error: err.message });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;  // Make sure this is 5000
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 CORS enabled for localhost:5173`);
+  console.log(`🌐 CORS enabled for localhost:5173-5180`);
   console.log(`📊 Database: MongoDB Atlas`);
   console.log(`🔗 API endpoints available at http://localhost:${PORT}/api`);
 });

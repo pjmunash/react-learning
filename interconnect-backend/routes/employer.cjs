@@ -1,100 +1,138 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User.cjs');
-const Application = require('../models/Application.cjs');
-const Internship = require('../models/Internship.cjs');
-
 const router = express.Router();
+const Internship = require('../models/Internship.cjs');
+const Application = require('../models/Application.cjs');
+const auth = require('../middleware/auth.cjs'); // Use consistent auth middleware
 
-// Middleware to verify token
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' });
-    }
-    req.user = user;
-    next();
-  });
-};
-
-// Get employer dashboard data
-router.get('/dashboard', authenticateToken, async (req, res) => {
+// Employer dashboard data
+router.get('/dashboard', auth, async (req, res) => {
   try {
-    const employerId = req.user.userId;
+    if (req.user.role !== 'employer') {
+      return res.status(403).json({ message: 'Access denied. Employers only.' });
+    }
 
-    // Get employer's internships
-    const internships = await Internship.find({ employerId });
+    const employerId = req.user._id; // Consistent with auth middleware
     
-    // Get applications for employer's internships
-    const internshipIds = internships.map(i => i._id);
-    const applications = await Application.find({ internshipId: { $in: internshipIds } })
-      .populate('studentId', 'name email')
-      .populate('internshipId', 'title company')
-      .sort({ appliedAt: -1 });
+    // Get employer statistics
+    const internships = await Internship.countDocuments({ employer: employerId });
+    const activeInternships = await Internship.countDocuments({ employer: employerId, status: 'active' });
+    
+    const employerInternships = await Internship.find({ employer: employerId });
+    const internshipIds = employerInternships.map(i => i._id);
+    
+    const applications = await Application.countDocuments({ internship: { $in: internshipIds } });
+    const pendingApplications = await Application.countDocuments({ 
+      internship: { $in: internshipIds }, 
+      status: 'pending' 
+    });
 
-    // Calculate stats
-    const totalInternships = internships.length;
-    const activeInternships = internships.filter(i => i.isActive).length;
-    const totalApplications = applications.length;
-    const pendingApplications = applications.filter(app => app.status === 'pending').length;
+    // Get recent activity (recent applications)
+    const recentActivity = await Application.find({ internship: { $in: internshipIds } })
+      .populate('student', 'name email')
+      .populate('internship', 'title')
+      .sort({ createdAt: -1 })
+      .limit(5);
 
-    // Recent activity
-    const recentActivity = applications.slice(0, 10).map(app => ({
+    const formattedActivity = recentActivity.map(app => ({
       id: app._id,
-      title: 'New Application',
-      student: app.studentId?.name || 'Unknown Student',
-      role: app.internshipId?.title || 'Unknown Role',
-      status: app.status,
-      time: app.appliedAt,
-      type: 'application_received'
+      title: `New application for ${app.internship.title}`,
+      student: app.student.name,
+      role: app.internship.title,
+      time: app.createdAt
     }));
 
     res.json({
       stats: {
-        internships: totalInternships,
+        internships,
         activeInternships,
-        applications: totalApplications,
+        applications,
         pendingApplications
       },
-      recentActivity,
-      internships
+      recentActivity: formattedActivity
     });
-
   } catch (error) {
-    console.error('Error fetching employer dashboard:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error fetching employer dashboard data:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Create new internship
-router.post('/internships', authenticateToken, async (req, res) => {
+// Post new internship
+router.post('/internships', auth, async (req, res) => {
   try {
-    const employerId = req.user.userId;
     const { title, company, description, requirements, location, duration, stipend } = req.body;
+    const employerId = req.user._id; // Consistent field naming
 
     const internship = new Internship({
       title,
       company,
-      employerId,
       description,
-      requirements: requirements.split(',').map(r => r.trim()),
+      requirements,
       location,
       duration,
-      stipend: stipend || 0
+      stipend,
+      employer: employerId, // Use 'employer' field consistently
+      status: 'active'
     });
 
     await internship.save();
-    res.status(201).json({ message: 'Internship created successfully', internship });
+    res.status(201).json({ message: 'Internship posted successfully', internship });
   } catch (error) {
-    console.error('Error creating internship:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error posting internship:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get applications for employer's internships
+router.get('/applications', auth, async (req, res) => {
+  try {
+    console.log('Fetching applications for employer:', req.user._id);
+    const employerId = req.user._id;
+    
+    const internships = await Internship.find({ employer: employerId });
+    const internshipIds = internships.map(internship => internship._id);
+    
+    console.log('Found internships:', internshipIds);
+    
+    const applications = await Application.find({ 
+      internship: { $in: internshipIds } 
+    })
+    .populate('student', 'name email')
+    .populate('internship', 'title company location')
+    .sort({ createdAt: -1 });
+    
+    console.log('Found applications:', applications.length);
+    res.json(applications);
+  } catch (error) {
+    console.error('Error fetching applications:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update application status
+router.patch('/applications/:applicationId/status', auth, async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    const { status } = req.body;
+    const employerId = req.user._id;
+    
+    const application = await Application.findById(applicationId)
+      .populate('internship');
+    
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+    
+    if (application.internship.employer.toString() !== employerId.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    
+    application.status = status;
+    await application.save();
+    
+    res.json({ message: `Application ${status} successfully`, application });
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
