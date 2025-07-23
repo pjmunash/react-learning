@@ -16,21 +16,18 @@ connectDB();
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://pjmunash.github.io',
+      'https://react-learning-w23u.onrender.com' // Your Render backend URL
+    ];
     
-    // Extract port from origin
-    const match = origin.match(/http:\/\/localhost:(\d+)/);
-    if (match) {
-      const port = parseInt(match[1]);
-      // Allow ports 5173-5180
-      if (port >= 5173 && port <= 5180) {
-        return callback(null, true);
-      }
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    
-    // Fallback for other origins
-    callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
