@@ -19,13 +19,14 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://pjmunash.github.io',
-      'https://react-learning-w23u.onrender.com' // Your Render backend URL
+      'https://pjmunash.github.io',  // Your GitHub Pages domain
+      'https://react-learning-q8t3.onrender.com'  // Your backend domain (for testing)
     ];
     
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('❌ CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
