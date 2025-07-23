@@ -1,10 +1,15 @@
 import axios from 'axios';
 
-// Make sure this matches your backend server port
-const API_BASE_URL = 'http://localhost:5000/api';
+// Import the centralized API URL
+import { API_BASE_URL } from '../config/api.js';
+
+// Use the centralized API URL and add /api path
+const API_URL = `${API_BASE_URL}/api`;
+
+console.log('🔗 Services API URL:', API_URL);
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,12 +29,12 @@ export const authAPI = {
   // Register new user
   register: async (userData) => {
     try {
-      console.log('Attempting to register with:', userData); // Debug log
+      console.log('Attempting to register with:', userData);
       const response = await api.post('/auth/register', userData);
-      console.log('Registration response:', response.data); // Debug log
+      console.log('Registration response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Registration error:', error); // Debug log
+      console.error('Registration error:', error);
       throw error.response?.data || { message: 'Registration failed' };
     }
   },
@@ -37,7 +42,7 @@ export const authAPI = {
   // Login user
   login: async (credentials) => {
     try {
-      console.log('Attempting to login with:', credentials); // Debug log
+      console.log('Attempting to login with:', credentials);
       const response = await api.post('/auth/login', credentials);
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
@@ -45,7 +50,7 @@ export const authAPI = {
       }
       return response.data;
     } catch (error) {
-      console.error('Login error:', error); // Debug log
+      console.error('Login error:', error);
       throw error.response?.data || { message: 'Login failed' };
     }
   },
