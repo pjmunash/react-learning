@@ -3,11 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5173,
-    host: true
-  },
-  css: {
-    postcss: './postcss.config.js',
+  base: '/react-learning/', // Your repository name
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   }
 })
