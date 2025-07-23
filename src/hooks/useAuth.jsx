@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-const API_BASE_URL = 'http://localhost:5000';
+import { API_BASE_URL } from '../config/api.js';
 
 const AuthContext = createContext();
 
@@ -28,7 +27,9 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setError('');
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, { // Use the constant
+      console.log('🔗 Register API call to:', `${API_BASE_URL}/api/auth/register`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,6 +49,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message);
       }
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.message || 'Registration failed');
       throw err;
     }
@@ -56,7 +58,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setError('');
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, { // Use the constant
+      console.log('🔗 Login API call to:', `${API_BASE_URL}/api/auth/login`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,6 +80,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message);
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message || 'Login failed');
       throw err;
     }
