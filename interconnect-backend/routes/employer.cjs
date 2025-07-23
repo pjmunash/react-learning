@@ -59,26 +59,43 @@ router.get('/dashboard', auth, async (req, res) => {
 // Post new internship
 router.post('/internships', auth, async (req, res) => {
   try {
+    console.log('📝 Posting internship for user:', req.user.email);
+    console.log('📝 Internship data:', req.body);
+    
     const { title, company, description, requirements, location, duration, stipend } = req.body;
-    const employerId = req.user._id; // Consistent field naming
+    
+    // Validate required fields
+    if (!title || !company || !description || !location) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    const employerId = req.user._id;
 
     const internship = new Internship({
       title,
       company,
       description,
-      requirements,
+      requirements: Array.isArray(requirements) ? requirements : [requirements],
       location,
       duration,
-      stipend,
-      employer: employerId, // Use 'employer' field consistently
+      stipend: Number(stipend) || 0,
+      employer: employerId,
       status: 'active'
     });
 
-    await internship.save();
-    res.status(201).json({ message: 'Internship posted successfully', internship });
+    const savedInternship = await internship.save();
+    console.log('✅ Internship saved:', savedInternship._id);
+    
+    // Populate the employer data
+    await savedInternship.populate('employer', 'name email');
+    
+    res.status(201).json({ 
+      message: 'Internship posted successfully', 
+      internship: savedInternship 
+    });
   } catch (error) {
-    console.error('Error posting internship:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Error posting internship:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

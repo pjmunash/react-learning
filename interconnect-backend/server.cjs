@@ -47,7 +47,7 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/student', studentRoutes);
+app.use('/api/student', require('./routes/student.cjs'));
 app.use('/api/employer', employerRoutes);
 app.use('/api/admin', adminRoutes);
 

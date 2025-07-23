@@ -32,11 +32,11 @@ router.post('/register', async (req, res) => {
 
     await user.save();
 
-    // Generate token
+    // Generate token - USE 'id' not 'userId'
     const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role }, // Changed userId to id
       process.env.JWT_SECRET || 'fallback-secret-key',
-      { expiresIn: '1h' }
+      { expiresIn: '24h' } // Extended to 24h
     );
 
     console.log('✅ User registered successfully:', user.email);
@@ -78,14 +78,15 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
+    // Generate token - USE 'id' not 'userId'
     const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role }, // Changed userId to id
       process.env.JWT_SECRET || 'fallback-secret-key',
-      { expiresIn: '1h' }
+      { expiresIn: '24h' } // Extended to 24h
     );
 
     console.log('✅ User logged in successfully:', user.email);
+    console.log('Token payload:', { id: user._id, email: user.email, role: user.role }); // Debug log
 
     res.json({
       message: 'Login successful',
@@ -100,6 +101,159 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('❌ Login error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Test auth route for debugging
+router.get('/test-auth', require('../middleware/auth.cjs'), (req, res) => {
+  res.json({
+    message: 'Authentication working!',
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    }
+  });
+});
+
+// Debug route to check database contents
+router.get('/debug-data', async (req, res) => {
+  try {
+    const User = require('../models/User.cjs');
+    const Internship = require('../models/Internship.cjs');
+    const Application = require('../models/Application.cjs');
+
+    const users = await User.find().select('-password');
+    const internships = await Internship.find().populate('employer', 'name email');
+    const applications = await Application.find()
+      .populate('student', 'name email')
+      .populate('internship', 'title company');
+
+    res.json({
+      totalUsers: users.length,
+      totalInternships: internships.length,
+      totalApplications: applications.length,
+      users: users,
+      internships: internships,
+      applications: applications
+    });
+  } catch (error) {
+    console.error('Debug data error:', error);
+    res.status(500).json({ message: 'Error fetching debug data' });
+  }
+});
+
+// Add to interconnect-backend/routes/auth.cjs for testing:
+router.post('/create-test-data', async (req, res) => {
+  try {
+    const User = require('../models/User.cjs');
+    const Internship = require('../models/Internship.cjs');
+    const Application = require('../models/Application.cjs');
+    const bcrypt = require('bcryptjs');
+
+    // Create test users if they don't exist
+    const testStudent = await User.findOneAndUpdate(
+      { email: 'student@test.com' },
+      {
+        name: 'Test Student',
+        email: 'student@test.com',
+        password: await bcrypt.hash('password123', 12),
+        role: 'student'
+      },
+      { upsert: true, new: true }
+    );
+
+    const testEmployer = await User.findOneAndUpdate(
+      { email: 'employer@test.com' },
+      {
+        name: 'Test Employer',
+        email: 'employer@test.com',
+        password: await bcrypt.hash('password123', 12),
+        role: 'employer'
+      },
+      { upsert: true, new: true }
+    );
+
+    // Create test internship
+    const testInternship = await Internship.findOneAndUpdate(
+      { title: 'Test Software Intern' },
+      {
+        title: 'Test Software Intern',
+        company: 'Test Company',
+        description: 'Test internship description',
+        requirements: ['JavaScript', 'React'],
+        location: 'Remote',
+        duration: '3 months',
+        stipend: 1000,
+        employer: testEmployer._id,
+        status: 'active'
+      },
+      { upsert: true, new: true }
+    );
+
+    // Create test application
+    await Application.findOneAndUpdate(
+      { student: testStudent._id, internship: testInternship._id },
+      {
+        student: testStudent._id,
+        internship: testInternship._id,
+        coverLetter: 'Test cover letter',
+        status: 'pending'
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: 'Test data created successfully' });
+  } catch (error) {
+    console.error('Error creating test data:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Add to interconnect-backend/routes/auth.cjs
+router.get('/debug-all-data', async (req, res) => {
+  try {
+    const User = require('../models/User.cjs');
+    const Internship = require('../models/Internship.cjs');
+    const Application = require('../models/Application.cjs');
+
+    const users = await User.find().select('-password');
+    const internships = await Internship.find().populate('employer', 'name email');
+    const applications = await Application.find()
+      .populate('student', 'name email')
+      .populate('internship', 'title company');
+
+    console.log('=== DEBUG DATA ===');
+    console.log('Users:', users.length);
+    console.log('Internships:', internships.length);
+    console.log('Applications:', applications.length);
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers: users.length,
+        totalInternships: internships.length,
+        totalApplications: applications.length
+      },
+      data: {
+        users: users.map(u => ({ id: u._id, name: u.name, email: u.email, role: u.role })),
+        internships: internships.map(i => ({ 
+          id: i._id, 
+          title: i.title, 
+          company: i.company, 
+          employer: i.employer?.name || 'Unknown'
+        })),
+        applications: applications.map(a => ({ 
+          id: a._id, 
+          student: a.student?.name || 'Unknown',
+          internship: a.internship?.title || 'Unknown'
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Debug data error:', error);
+    res.status(500).json({ message: 'Error fetching debug data', error: error.message });
   }
 });
 

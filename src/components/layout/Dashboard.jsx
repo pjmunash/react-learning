@@ -42,68 +42,80 @@ const Dashboard = ({ user, setActivePage, handleLogout }) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="hero bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+      <section className="hero bg-white py-20">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto gap-8">
+          <div className="flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto gap-12">
             {/* Left side - Text content */}
-            <div className="flex-1 lg:pr-8 text-center lg:text-left">
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Connect Students with <br />
-                <span className="text-blue-600">Dream Internships</span>
+            <div className="flex-1 lg:pr-12 text-left">
+              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Connecting Students<br />
+                to Their <span className="text-blue-600">Dream<br />Internships</span>
               </h1>
-              <p className="text-lg lg:text-xl text-gray-600 mb-8 max-w-2xl lg:max-w-none">
-                Bridge the gap between talented students and innovative companies. 
-                Find your perfect internship or discover your next great intern.
+              <p className="text-lg text-gray-600 mb-8 max-w-xl leading-relaxed">
+                InterConnect bridges the gap between talented students 
+                seeking opportunities and companies looking for fresh 
+                perspectives. Start your journey today.
               </p>
-              <button
-                className="bg-blue-600 text-white px-7 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors mx-auto lg:mx-0"
-                onClick={() => setActivePage('auth')}
-              >
-                Get Started <i className="fas fa-arrow-right"></i>
-              </button>
+              
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <button
+                  className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                  onClick={() => setActivePage('auth')}
+                >
+                  Get Started <i className="fas fa-arrow-right"></i>
+                </button>
+                <button
+                  className="bg-transparent border border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    // Scroll to features section
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Learn More
+                </button>
+              </div>
+
+              {/* Stats indicators */}
+              <div className="flex items-center gap-8 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>1000+ Students</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span>500+ Companies</span>
+                </div>
+              </div>
             </div>
             
             {/* Right side - Hero image */}
-            <div className="flex-1 relative w-full lg:w-auto">
-              <div className="relative z-10">
+            <div className="flex-1 relative">
+              <div className="relative">
                 <img 
-                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-                  alt="Students collaborating and working together"
-                  className="rounded-2xl shadow-2xl w-full h-[300px] lg:h-[400px] object-cover"
+                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                  alt="Students working together in a modern office environment"
+                  className="rounded-2xl w-full h-[500px] lg:h-[600px] object-cover shadow-2xl"
                   loading="lazy"
-                  onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/1000x400/3B82F6/FFFFFF?text=Students+Working+Together";
-                  }}
                 />
-                {/* Floating cards positioned below text */}
-                <div className="absolute -top-2 -left-2 lg:top-6 lg:-left-4 bg-white rounded-lg shadow-lg p-3 lg:p-4 z-20">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-xs lg:text-sm font-medium text-gray-700">1000+ Students</span>
-                  </div>
-                </div>
-                <div className="absolute -bottom-2 -right-2 lg:bottom-6 lg:-right-4 bg-white rounded-lg shadow-lg p-3 lg:p-4 z-20">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span className="text-xs lg:text-sm font-medium text-gray-700">500+ Companies</span>
-                  </div>
-                </div>
+                
+                {/* Gradient overlay on bottom */}
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
               </div>
-              
-              {/* Background decoration */}
-              <div className="absolute inset-0 bg-blue-200 rounded-2xl transform rotate-6 scale-105 opacity-20"></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className="py-24 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose InterConnect?</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Our platform offers everything you need for successful internship connections
+          <div className="text-center mb-20">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Why Choose InterConnect?
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Our platform offers everything you need for successful internship connections, 
+              bringing together the best talent with the best opportunities.
             </p>
           </div>
           

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 import { API_BASE_URL } from './config/api.js';
 
@@ -12,7 +12,12 @@ import AdminPortal from './pages/AdminPortal.jsx';
 // Import modal components
 import InternshipModal from './components/modals/InternshipModal.jsx';
 import ApplicationModal from './components/modals/ApplicationModal.jsx';
+import ApplicationHistoryModal from './components/modals/ApplicationHistoryModal.jsx';
+import ProfileManagementModal from './components/modals/ProfileManagementModal.jsx';
+import BrowseInternshipsModal from './components/modals/BrowseInternshipsModal.jsx';
 import ApplicationsModal from './components/modals/ApplicationsModal.jsx';
+import UserManagementModal from './components/modals/UserManagementModal.jsx';
+import SystemAnalyticsModal from './components/modals/SystemAnalyticsModal.jsx';
 
 import './App.css';
 
@@ -27,6 +32,11 @@ const AppContent = () => {
   const [showInternshipModal, setShowInternshipModal] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
+  const [showApplicationHistoryModal, setShowApplicationHistoryModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBrowseModal, setShowBrowseModal] = useState(false);
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+  const [showSystemAnalyticsModal, setShowSystemAnalyticsModal] = useState(false);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -61,6 +71,30 @@ const AppContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check for existing token on app load
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp > Date.now() / 1000) {
+          setUser({ 
+            _id: payload._id,
+            name: payload.name, 
+            email: payload.email, 
+            role: payload.role 
+          });
+          setActivePage('dashboard');
+        } else {
+          localStorage.removeItem('token');
+        }
+      } catch (error) {
+        console.error('Invalid token:', error);
+        localStorage.removeItem('token');
+      }
+    }
+  }, []);
 
   // Helper functions
   const handleTab = (tab) => {
@@ -160,6 +194,8 @@ const AppContent = () => {
   const fetchAvailableInternships = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('🔍 Fetching available internships...');
+      
       const response = await fetch(`${API_BASE_URL}/api/student/internships`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -168,28 +204,43 @@ const AppContent = () => {
       });
 
       if (response.ok) {
-        const internships = await response.json();
-        setAvailableInternships(internships);
+        const data = await response.json();
+        console.log('✅ Available internships:', data);
+        setAvailableInternships(data);
+      } else {
+        const errorData = await response.text();
+        console.error('❌ Failed to fetch internships:', errorData);
+        setAvailableInternships([]);
       }
     } catch (error) {
-      console.error('Error fetching internships:', error);
+      console.error('❌ Error fetching internships:', error);
+      setAvailableInternships([]);
     }
   }, []);
 
   const handleInternshipSubmit = useCallback(async (e) => {
     e.preventDefault();
+    
     try {
       const token = localStorage.getItem('token');
+      console.log('Token from localStorage:', token); // Debug log
+      
+      if (!token) {
+        setError('No authentication token found. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/employer/internships`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(internshipForm)
       });
 
       if (response.ok) {
+        const result = await response.json();
         alert('Internship posted successfully!');
         setShowInternshipModal(false);
         setInternshipForm({
@@ -201,45 +252,56 @@ const AppContent = () => {
           duration: '',
           stipend: ''
         });
+        // Refresh employer data
+        fetchEmployerData();
       } else {
-        const error = await response.json();
-        alert('Error: ' + error.message);
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to post internship');
       }
     } catch (error) {
       console.error('Error posting internship:', error);
-      alert('Failed to post internship');
+      setError('Network error. Please try again.');
     }
   }, [internshipForm]);
 
-  const handleApplicationSubmit = useCallback(async (e) => {
+  const handleApplicationSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/student/apply`, {
+      console.log('📤 Submitting application...');
+      console.log('📤 Form data:', applicationForm);
+      
+      const response = await fetch(`${API_BASE_URL}/api/student/applications`, { // ← Changed from /apply to /applications
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(applicationForm)
+        body: JSON.stringify({
+          internshipId: applicationForm.internshipId,
+          coverLetter: applicationForm.coverLetter
+        })
       });
 
       if (response.ok) {
+        const result = await response.json();
         alert('Application submitted successfully!');
         setShowApplicationModal(false);
-        setApplicationForm({
-          internshipId: '',
-          coverLetter: ''
-        });
+        setApplicationForm({ internshipId: '', coverLetter: '' });
+        // Refresh student data if you have that function
       } else {
-        const error = await response.json();
-        alert('Error: ' + error.message);
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to submit application');
       }
     } catch (error) {
-      console.error('Error submitting application:', error);
-      alert('Failed to submit application');
+      console.error('❌ Error submitting application:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [applicationForm]);
+  };
 
   const fetchApplications = useCallback(async () => {
     setApplicationsLoading(true);
@@ -290,20 +352,90 @@ const AppContent = () => {
     }
   }, [fetchApplications]);
 
+  const fetchEmployerData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('📊 Fetching employer data...');
+      
+      // Fetch employer's internships
+      const internshipsResponse = await fetch(`${API_BASE_URL}/api/employer/internships`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (internshipsResponse.ok) {
+        const internshipsData = await internshipsResponse.json();
+        console.log('✅ Employer internships:', internshipsData);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching employer data:', error);
+    }
+  }, []);
+
   // Modal handlers
   const handlePostInternship = useCallback(() => {
     setShowInternshipModal(true);
   }, []);
 
   const handleViewApplications = useCallback(() => {
-    setShowApplicationsModal(true);
-    fetchApplications();
-  }, [fetchApplications]);
+    console.log('📋 View applications clicked');
+    if (user?.role === 'employer') {
+      setShowApplicationsModal(true);
+      fetchApplications();
+    } else {
+      setShowApplicationHistoryModal(true);
+    }
+  }, [user?.role, fetchApplications]);
 
-  const handleApplyForInternship = useCallback(() => {
+  const handleManageProfile = useCallback(() => {
+    console.log('👤 Manage profile clicked');
+    setShowProfileModal(true);
+  }, []);
+
+  const handleBrowseInternships = useCallback(() => {
+    console.log('🔍 Browse internships clicked');
+    setShowBrowseModal(true);
+  }, []);
+
+  // Apply for Internship handler
+  const handleApplyForInternship = useCallback((internshipId = '') => {
+    console.log('🎯 Apply for internship called with ID:', internshipId);
+    
+    // Set pre-selected internship if provided
+    if (internshipId) {
+      setApplicationForm(prev => ({
+        ...prev,
+        internshipId: internshipId
+      }));
+    }
+    
     setShowApplicationModal(true);
     fetchAvailableInternships();
   }, [fetchAvailableInternships]);
+
+  // Profile update handler
+  const handleProfileUpdate = useCallback((updatedProfile) => {
+    console.log('✅ Profile updated:', updatedProfile);
+    // Update user state if needed
+  }, []);
+
+  // Admin handlers
+  const handleManageUsers = useCallback(() => {
+    console.log('👥 Manage users clicked');
+    setShowUserManagementModal(true);
+  }, []);
+
+  const handleViewAnalytics = useCallback(() => {
+    console.log('📊 View analytics clicked');
+    setShowSystemAnalyticsModal(true);
+  }, []);
+
+  const handleSystemSettings = useCallback(() => {
+    console.log('⚙️ System settings clicked');
+    alert('System settings feature coming soon!');
+  }, []);
 
   // Render the appropriate page based on activePage state
   const renderCurrentPage = () => {
@@ -329,21 +461,14 @@ const AppContent = () => {
       
       case 'student':
         return (
-          <>
-            <StudentPortal 
-              user={user} 
-              setActivePage={setActivePage}
-              onApplyForInternship={handleApplyForInternship}  // Add this line
-            />
-            <ApplicationModal
-              showApplicationModal={showApplicationModal}
-              setShowApplicationModal={setShowApplicationModal}
-              applicationForm={applicationForm}
-              setApplicationForm={setApplicationForm}
-              availableInternships={availableInternships}
-              handleApplicationSubmit={handleApplicationSubmit}
-            />
-          </>
+          <StudentPortal 
+            user={user} 
+            setActivePage={setActivePage} 
+            onApplyForInternship={handleApplyForInternship}
+            onBrowseInternships={handleBrowseInternships}
+            onViewApplications={handleViewApplications}
+            onManageProfile={handleManageProfile}
+          />
         );
       
       case 'employer':
@@ -377,6 +502,9 @@ const AppContent = () => {
           <AdminPortal 
             user={user} 
             setActivePage={setActivePage}
+            onManageUsers={handleManageUsers}
+            onViewAnalytics={handleViewAnalytics}
+            onSystemSettings={handleSystemSettings}
           />
         );
       
@@ -392,9 +520,66 @@ const AppContent = () => {
   };
 
   return (
-    <div className="App">
-      {renderCurrentPage()}
-    </div>
+    <>
+      <div className="App">
+        {renderCurrentPage()}
+      </div>
+      
+      {/* Application Modal */}
+      <ApplicationModal
+        showApplicationModal={showApplicationModal}
+        setShowApplicationModal={setShowApplicationModal}
+        applicationForm={applicationForm}
+        setApplicationForm={setApplicationForm}
+        availableInternships={availableInternships}
+        handleApplicationSubmit={handleApplicationSubmit}
+      />
+
+      {/* Internship Modal */}
+      <InternshipModal
+        showInternshipModal={showInternshipModal}
+        setShowInternshipModal={setShowInternshipModal}
+        internshipForm={internshipForm}
+        setInternshipForm={setInternshipForm}
+        handleInternshipSubmit={handleInternshipSubmit}
+        error={error}
+      />
+
+      {/* Browse Internships Modal */}
+      <BrowseInternshipsModal
+        showModal={showBrowseModal}
+        setShowModal={setShowBrowseModal}
+        onApplyForInternship={handleApplyForInternship}
+        user={user}
+      />
+
+      {/* Application History Modal */}
+      <ApplicationHistoryModal
+        showModal={showApplicationHistoryModal}
+        setShowModal={setShowApplicationHistoryModal}
+        user={user}
+      />
+
+      {/* Profile Management Modal */}
+      <ProfileManagementModal
+        showModal={showProfileModal}
+        setShowModal={setShowProfileModal}
+        user={user}
+        onProfileUpdate={handleProfileUpdate}
+      />
+
+      {/* User Management Modal */}
+      <UserManagementModal
+        showModal={showUserManagementModal}
+        setShowModal={setShowUserManagementModal}
+      />
+
+      {/* System Analytics Modal */}
+      <SystemAnalyticsModal
+        showModal={showSystemAnalyticsModal}
+        setShowModal={setShowSystemAnalyticsModal}
+      />
+    </>
   );
 };
 

@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../config/api.js';
 
-const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
-  const [studentData, setStudentData] = useState({
-    stats: {
-      applications: 0,
-      interviews: 0,
-      offers: 0,
-      profileViews: 0
-    },
-    recentActivity: []
+const StudentPortal = ({ 
+  user, 
+  setActivePage, 
+  onApplyForInternship, 
+  onBrowseInternships,
+  onViewApplications,
+  onManageProfile
+}) => {
+  const [studentStats, setStudentStats] = useState({
+    applications: 0,
+    interviews: 0,
+    offers: 0,
+    profileViews: 0
   });
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const formatTime = (dateString) => {
@@ -24,9 +29,6 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
   };
 
   const fetchStudentData = useCallback(async () => {
-    if (!user) return;
-    
-    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/student/dashboard`, {
@@ -38,14 +40,15 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setStudentData(data);
+        setStudentStats(data.stats);
+        setRecentActivity(data.recentActivity);
       }
     } catch (error) {
       console.error('Error fetching student data:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     fetchStudentData();
@@ -72,6 +75,33 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
     // Add application viewing logic here
   };
 
+  const stats = [
+    { 
+      title: 'Applications', 
+      value: studentStats.applications, 
+      icon: 'fas fa-file-alt',
+      color: 'bg-blue-100 text-blue-600' 
+    },
+    { 
+      title: 'Interviews', 
+      value: studentStats.interviews, 
+      icon: 'fas fa-calendar-check',
+      color: 'bg-green-100 text-green-600' 
+    },
+    { 
+      title: 'Offers', 
+      value: studentStats.offers, 
+      icon: 'fas fa-trophy',
+      color: 'bg-yellow-100 text-yellow-600' 
+    },
+    { 
+      title: 'Profile Views', 
+      value: studentStats.profileViews, 
+      icon: 'fas fa-eye',
+      color: 'bg-purple-100 text-purple-600' 
+    }
+  ];
+
   return (
     <div className="font-inter bg-gray-50 text-gray-900 min-h-screen">
       <div className="container mx-auto px-4 pt-8">
@@ -95,26 +125,13 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
         ) : (
           <>
             <div className="stats-row flex justify-center gap-6 mb-8">
-              <div className="stat-card border border-gray-200 rounded-lg p-7 min-w-[200px] text-center shadow-sm bg-white">
-                <p className="text-gray-600 text-base mb-2">Applications</p>
-                <p className="text-3xl font-bold text-blue-600">{studentData.stats.applications}</p>
-                <i className="fas fa-file-alt text-blue-600 text-2xl mt-2"></i>
-              </div>
-              <div className="stat-card border border-gray-200 rounded-lg p-7 min-w-[200px] text-center shadow-sm bg-white">
-                <p className="text-gray-600 text-base mb-2">Interviews</p>
-                <p className="text-3xl font-bold text-green-600">{studentData.stats.interviews}</p>
-                <i className="fas fa-video text-green-600 text-2xl mt-2"></i>
-              </div>
-              <div className="stat-card border border-gray-200 rounded-lg p-7 min-w-[200px] text-center shadow-sm bg-white">
-                <p className="text-gray-600 text-base mb-2">Offers</p>
-                <p className="text-3xl font-bold text-purple-600">{studentData.stats.offers}</p>
-                <i className="fas fa-handshake text-purple-600 text-2xl mt-2"></i>
-              </div>
-              <div className="stat-card border border-gray-200 rounded-lg p-7 min-w-[200px] text-center shadow-sm bg-white">
-                <p className="text-gray-600 text-base mb-2">Profile Views</p>
-                <p className="text-3xl font-bold text-orange-600">{studentData.stats.profileViews}</p>
-                <i className="fas fa-eye text-orange-600 text-2xl mt-2"></i>
-              </div>
+              {stats.map((stat, index) => (
+                <div key={index} className={`stat-card border border-gray-200 rounded-lg p-7 min-w-[200px] text-center shadow-sm bg-white ${stat.color}`}>
+                  <p className="text-gray-600 text-base mb-2">{stat.title}</p>
+                  <p className="text-3xl font-bold">{stat.value}</p>
+                  <i className={`${stat.icon} text-2xl mt-2`}></i>
+                </div>
+              ))}
             </div>
 
             <div className="quick-actions mb-8">
@@ -138,7 +155,11 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
                 <button 
                   onClick={() => {
                     console.log('Manage Profile clicked');
-                    alert('Profile management feature coming soon!');
+                    if (onManageProfile) {
+                      onManageProfile();
+                    } else {
+                      alert('Profile management feature coming soon!');
+                    }
                   }}
                   className="bg-green-600 text-white px-4 py-3 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
                 >
@@ -149,7 +170,11 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
                 <button 
                   onClick={() => {
                     console.log('View Applications clicked');
-                    alert('View applications feature coming soon!');
+                    if (onViewApplications) {
+                      onViewApplications();
+                    } else {
+                      alert('View applications feature coming soon!');
+                    }
                   }}
                   className="bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors"
                 >
@@ -160,7 +185,11 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
                 <button 
                   onClick={() => {
                     console.log('Browse Internships clicked');
-                    alert('Browse internships feature coming soon!');
+                    if (onBrowseInternships) {
+                      onBrowseInternships();
+                    } else {
+                      alert('Browse internships feature coming soon!');
+                    }
                   }}
                   className="bg-orange-600 text-white px-4 py-3 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors"
                 >
@@ -173,8 +202,8 @@ const StudentPortal = ({ user, setActivePage, onApplyForInternship }) => {
             <div className="recent-activity flex-1 min-w-[320px] border border-gray-200 rounded-lg p-6 shadow-sm bg-white">
               <h2 className="recent-activity-title text-2xl font-semibold mb-4.5">Recent Activity</h2>
               <ul className="recent-activity-list">
-                {studentData.recentActivity.length > 0 ? (
-                  studentData.recentActivity.map((activity, index) => (
+                {recentActivity.length > 0 ? (
+                  recentActivity.map((activity, index) => (
                     <li key={activity.id || index} className="activity-item flex justify-between mb-4.5">
                       <div className="activity-info flex gap-2.5">
                         <span className={`activity-dot w-2.5 h-2.5 rounded-full mt-1.5 ${
